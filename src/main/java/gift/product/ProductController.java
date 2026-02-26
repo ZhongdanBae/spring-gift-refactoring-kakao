@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/products")
@@ -22,8 +24,9 @@ public class ProductController {
     private final ProductService productService;
 
     @Autowired
-    public ProductController(ProductService productService) {
-        this.productService = productService;
+    public ProductController(ProductRepository productRepository, CategoryRepository categoryRepository) {
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @GetMapping
@@ -33,15 +36,21 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.findById(id));
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("상품을 찾을 수 없습니다. id=" + id));
+        return ResponseEntity.ok(ProductResponse.from(product));
     }
 
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
-        ProductResponse response = productService.create(
-            request.name(), request.price(), request.imageUrl(), request.categoryId());
-        return ResponseEntity.created(URI.create("/api/products/" + response.id()))
-            .body(response);
+        validateName(request.name());
+
+        Category category = categoryRepository.findById(request.categoryId())
+            .orElseThrow(() -> new NoSuchElementException("카테고리를 찾을 수 없습니다. id=" + request.categoryId()));
+
+        Product saved = productRepository.save(request.toEntity(category));
+        return ResponseEntity.created(URI.create("/api/products/" + saved.getId()))
+            .body(ProductResponse.from(saved));
     }
 
     @PutMapping("/{id}")
@@ -49,13 +58,29 @@ public class ProductController {
         @PathVariable Long id,
         @Valid @RequestBody ProductRequest request
     ) {
-        return ResponseEntity.ok(productService.update(
-            id, request.name(), request.price(), request.imageUrl(), request.categoryId()));
+        validateName(request.name());
+
+        Category category = categoryRepository.findById(request.categoryId())
+            .orElseThrow(() -> new NoSuchElementException("카테고리를 찾을 수 없습니다. id=" + request.categoryId()));
+
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("상품을 찾을 수 없습니다. id=" + id));
+
+        product.update(request.name(), request.price(), request.imageUrl(), category);
+        Product saved = productRepository.save(product);
+        return ResponseEntity.ok(ProductResponse.from(saved));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private void validateName(String name) {
+        List<String> errors = ProductNameValidator.validate(name);
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join(", ", errors));
+        }
     }
 }

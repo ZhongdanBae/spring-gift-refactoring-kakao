@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -21,8 +22,8 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @Autowired
-    public CategoryController(CategoryService categoryService) {
-        this.categoryService = categoryService;
+    public CategoryController(CategoryRepository categoryRepository) {
+        this.categoryRepository = categoryRepository;
     }
 
     @GetMapping
@@ -42,7 +43,12 @@ public class CategoryController {
         @PathVariable Long id,
         @Valid @RequestBody CategoryRequest request
     ) {
-        return ResponseEntity.ok(categoryService.update(id, request));
+        Category category = categoryRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("카테고리를 찾을 수 없습니다. id=" + id));
+
+        category.update(request.name(), request.color(), request.imageUrl(), request.description());
+        categoryRepository.save(category);
+        return ResponseEntity.ok(CategoryResponse.from(category));
     }
 
     @DeleteMapping("/{id}")

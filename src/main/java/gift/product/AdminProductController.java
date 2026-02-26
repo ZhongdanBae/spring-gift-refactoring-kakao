@@ -19,8 +19,8 @@ public class AdminProductController {
     private final CategoryRepository categoryRepository;
 
     @Autowired
-    public AdminProductController(ProductService productService, CategoryRepository categoryRepository) {
-        this.productService = productService;
+    public AdminProductController(ProductRepository productRepository, CategoryRepository categoryRepository) {
+        this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
     }
 
@@ -50,13 +50,17 @@ public class AdminProductController {
             return "product/new";
         }
 
-        productService.createForAdmin(name, price, imageUrl, categoryId);
+        Category category = categoryRepository.findById(categoryId)
+            .orElseThrow(() -> new NoSuchElementException("카테고리를 찾을 수 없습니다. id=" + categoryId));
+        productRepository.save(new Product(name, price, imageUrl, category));
         return "redirect:/admin/products";
     }
 
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model) {
-        model.addAttribute("product", productService.findEntityById(id));
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("상품을 찾을 수 없습니다. id=" + id));
+        model.addAttribute("product", product);
         model.addAttribute("categories", categoryRepository.findAll());
         return "product/edit";
     }
@@ -70,13 +74,20 @@ public class AdminProductController {
         @RequestParam Long categoryId,
         Model model
     ) {
-        List<String> errors = productService.validateProductNameForAdmin(name);
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("상품을 찾을 수 없습니다. id=" + id));
+
+        List<String> errors = ProductNameValidator.validate(name, true);
         if (!errors.isEmpty()) {
             populateEditForm(model, productService.findEntityById(id), errors, name, price, imageUrl, categoryId);
             return "product/edit";
         }
 
-        productService.updateForAdmin(id, name, price, imageUrl, categoryId);
+        Category category = categoryRepository.findById(categoryId)
+            .orElseThrow(() -> new NoSuchElementException("카테고리를 찾을 수 없습니다. id=" + categoryId));
+
+        product.update(name, price, imageUrl, category);
+        productRepository.save(product);
         return "redirect:/admin/products";
     }
 
