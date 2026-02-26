@@ -23,25 +23,12 @@ public class MemberController {
 
     @PostMapping("/register")
     public ResponseEntity<TokenResponse> register(@Valid @RequestBody MemberRequest request) {
-        if (memberRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("이미 등록된 이메일입니다.");
-        }
-
-        final Member member = memberRepository.save(request.toEntity());
-        final String token = jwtProvider.createToken(member.getEmail());
-        return ResponseEntity.status(HttpStatus.CREATED).body(new TokenResponse(token));
+        TokenResponse response = memberService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody MemberRequest request) {
-        final Member member = memberRepository.findByEmail(request.email())
-            .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
-
-        if (member.getPassword() == null || !member.getPassword().equals(request.password())) {
-            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
-        }
-
-        final String token = jwtProvider.createToken(member.getEmail());
-        return ResponseEntity.ok(new TokenResponse(token));
+        return ResponseEntity.ok(memberService.login(request));
     }
 }

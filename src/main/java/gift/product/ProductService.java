@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.Function;
 
 @Service
 public class ProductService {
@@ -46,37 +45,13 @@ public class ProductService {
             .orElseThrow(() -> new NoSuchElementException("상품을 찾을 수 없습니다. id=" + id));
     }
 
-    public List<String> validateProductName(String name) {
-        return ProductNameValidator.validate(name);
-    }
-
-    public List<String> validateProductNameForAdmin(String name) {
-        return ProductNameValidator.validateForAdmin(name);
+    public List<String> validateProductName(String name, boolean allowKakao) {
+        return ProductNameValidator.validate(name, allowKakao);
     }
 
     @Transactional
-    public ProductResponse create(String name, int price, String imageUrl, Long categoryId) {
-        return doCreate(name, price, imageUrl, categoryId, ProductNameValidator::validate);
-    }
-
-    @Transactional
-    public ProductResponse createForAdmin(String name, int price, String imageUrl, Long categoryId) {
-        return doCreate(name, price, imageUrl, categoryId, ProductNameValidator::validateForAdmin);
-    }
-
-    @Transactional
-    public ProductResponse update(Long id, String name, int price, String imageUrl, Long categoryId) {
-        return doUpdate(id, name, price, imageUrl, categoryId, ProductNameValidator::validate);
-    }
-
-    @Transactional
-    public ProductResponse updateForAdmin(Long id, String name, int price, String imageUrl, Long categoryId) {
-        return doUpdate(id, name, price, imageUrl, categoryId, ProductNameValidator::validateForAdmin);
-    }
-
-    private ProductResponse doCreate(String name, int price, String imageUrl, Long categoryId,
-                                     Function<String, List<String>> validator) {
-        List<String> errors = validator.apply(name);
+    public ProductResponse create(String name, int price, String imageUrl, Long categoryId, boolean allowKakao) {
+        List<String> errors = ProductNameValidator.validate(name, allowKakao);
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException(String.join(", ", errors));
         }
@@ -88,9 +63,9 @@ public class ProductService {
         return ProductResponse.from(saved);
     }
 
-    private ProductResponse doUpdate(Long id, String name, int price, String imageUrl, Long categoryId,
-                                     Function<String, List<String>> validator) {
-        List<String> errors = validator.apply(name);
+    @Transactional
+    public ProductResponse update(Long id, String name, int price, String imageUrl, Long categoryId, boolean allowKakao) {
+        List<String> errors = ProductNameValidator.validate(name, allowKakao);
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException(String.join(", ", errors));
         }
@@ -106,6 +81,7 @@ public class ProductService {
         return ProductResponse.from(saved);
     }
 
+    @Transactional
     public void delete(Long id) {
         productRepository.deleteById(id);
     }

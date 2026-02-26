@@ -1,7 +1,5 @@
 package gift.auth;
 
-import gift.member.Member;
-import gift.member.MemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,16 +21,8 @@ public class KakaoAuthController {
     private final KakaoAuthService kakaoAuthService;
 
     @Autowired
-    public KakaoAuthController(
-        KakaoLoginProperties properties,
-        KakaoLoginClient kakaoLoginClient,
-        MemberRepository memberRepository,
-        JwtProvider jwtProvider
-    ) {
-        this.properties = properties;
-        this.kakaoLoginClient = kakaoLoginClient;
-        this.memberRepository = memberRepository;
-        this.jwtProvider = jwtProvider;
+    public KakaoAuthController(KakaoAuthService kakaoAuthService) {
+        this.kakaoAuthService = kakaoAuthService;
     }
 
     @GetMapping("/login")

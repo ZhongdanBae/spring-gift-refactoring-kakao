@@ -9,8 +9,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.NoSuchElementException;
-
 /* 관리자용 회원 관리 컨트롤러 */
 @Controller
 @RequestMapping("/admin/members")
@@ -39,7 +37,7 @@ public class AdminMemberController {
         @RequestParam String password,
         Model model
     ) {
-        if (memberRepository.existsByEmail(email)) {
+        if (memberService.existsByEmail(email)) {
             populateNewFormError(model, email, "이미 등록된 이메일입니다.");
             return "member/new";
         }
@@ -50,9 +48,7 @@ public class AdminMemberController {
 
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model) {
-        final Member member = memberRepository.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다. id=" + id));
-        model.addAttribute("member", member);
+        model.addAttribute("member", memberService.findById(id));
         return "member/edit";
     }
 
@@ -62,10 +58,7 @@ public class AdminMemberController {
         @RequestParam String email,
         @RequestParam String password
     ) {
-        final Member member = memberRepository.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다. id=" + id));
-        member.update(email, password);
-        memberRepository.save(member);
+        memberService.update(id, email, password);
         return "redirect:/admin/members";
     }
 
@@ -74,10 +67,7 @@ public class AdminMemberController {
         @PathVariable Long id,
         @RequestParam int amount
     ) {
-        final Member member = memberRepository.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다. id=" + id));
-        member.chargePoint(amount);
-        memberRepository.save(member);
+        memberService.chargePoint(id, amount);
         return "redirect:/admin/members";
     }
 

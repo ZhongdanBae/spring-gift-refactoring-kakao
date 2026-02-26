@@ -5,7 +5,6 @@ import gift.member.MemberRepository;
 import gift.option.Option;
 import gift.option.OptionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,19 +17,19 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OptionRepository optionRepository;
     private final MemberRepository memberRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final KakaoMessageClient kakaoMessageClient;
 
     @Autowired
     public OrderService(
         OrderRepository orderRepository,
         OptionRepository optionRepository,
         MemberRepository memberRepository,
-        ApplicationEventPublisher eventPublisher
+        KakaoMessageClient kakaoMessageClient
     ) {
         this.orderRepository = orderRepository;
         this.optionRepository = optionRepository;
         this.memberRepository = memberRepository;
-        this.eventPublisher = eventPublisher;
+        this.kakaoMessageClient = kakaoMessageClient;
     }
 
     @Transactional(readOnly = true)
@@ -52,7 +51,18 @@ public class OrderService {
         member.deductPoint(price);
 
         Order saved = orderRepository.save(request.toEntity(option, member.getId()));
-        eventPublisher.publishEvent(new OrderCompletedEvent(member, saved, option));
+        sendKakaoMessageIfPossible(member, saved, option);
         return OrderResponse.from(saved);
+    }
+
+    private void sendKakaoMessageIfPossible(Member member, Order order, Option option) {
+        if (member.getKakaoAccessToken() == null) {
+            return;
+        }
+        try {
+            var product = option.getProduct();
+            kakaoMessageClient.sendToMe(member.getKakaoAccessToken(), order, product);
+        } catch (Exception ignored) {
+        }
     }
 }

@@ -19,8 +19,8 @@ public class AdminProductController {
     private final CategoryRepository categoryRepository;
 
     @Autowired
-    public AdminProductController(ProductRepository productRepository, CategoryRepository categoryRepository) {
-        this.productRepository = productRepository;
+    public AdminProductController(ProductService productService, CategoryRepository categoryRepository) {
+        this.productService = productService;
         this.categoryRepository = categoryRepository;
     }
 
@@ -44,23 +44,19 @@ public class AdminProductController {
         @RequestParam Long categoryId,
         Model model
     ) {
-        List<String> errors = productService.validateProductNameForAdmin(name);
+        List<String> errors = productService.validateProductName(name, true);
         if (!errors.isEmpty()) {
             populateNewForm(model, errors, name, price, imageUrl, categoryId);
             return "product/new";
         }
 
-        Category category = categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new NoSuchElementException("카테고리를 찾을 수 없습니다. id=" + categoryId));
-        productRepository.save(new Product(name, price, imageUrl, category));
+        productService.create(name, price, imageUrl, categoryId, true);
         return "redirect:/admin/products";
     }
 
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model) {
-        Product product = productRepository.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("상품을 찾을 수 없습니다. id=" + id));
-        model.addAttribute("product", product);
+        model.addAttribute("product", productService.findEntityById(id));
         model.addAttribute("categories", categoryRepository.findAll());
         return "product/edit";
     }
@@ -74,20 +70,13 @@ public class AdminProductController {
         @RequestParam Long categoryId,
         Model model
     ) {
-        Product product = productRepository.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("상품을 찾을 수 없습니다. id=" + id));
-
-        List<String> errors = ProductNameValidator.validate(name, true);
+        List<String> errors = productService.validateProductName(name, true);
         if (!errors.isEmpty()) {
             populateEditForm(model, productService.findEntityById(id), errors, name, price, imageUrl, categoryId);
             return "product/edit";
         }
 
-        Category category = categoryRepository.findById(categoryId)
-            .orElseThrow(() -> new NoSuchElementException("카테고리를 찾을 수 없습니다. id=" + categoryId));
-
-        product.update(name, price, imageUrl, category);
-        productRepository.save(product);
+        productService.update(id, name, price, imageUrl, categoryId, true);
         return "redirect:/admin/products";
     }
 
